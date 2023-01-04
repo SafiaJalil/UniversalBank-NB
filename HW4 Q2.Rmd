@@ -1,0 +1,283 @@
+---
+title: "HW Q2"
+author: "Safia 11012371"
+date: "2022-12-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+library(dplyr)
+library(readr)
+bank <- read_csv("~/Desktop/DM /a4/UniversalBank.csv")
+colnames(bank)[10] ="PersonalLoan"
+#Making subset of 2 predictors(Online,CCAvg) and 1 target variable Personal Loan
+bankdf<- bank[c(10,13,14)]
+
+#Checking missing values in the data 
+library(Amelia)
+missmap(bankdf)
+#No missing value 
+
+# Convert data to probability table to check the distribution 
+data_perc1 <- t(prop.table(table(bankdf$Online))) * 100 
+
+data_perc2 <- t(prop.table(table(bankdf$CreditCard))) * 100 
+
+data_perc3 <- t(prop.table(table(bankdf$PersonalLoan))) * 100 
+
+
+# Convert data to probability table
+# barplot(data_perc1, ylab = "Percent", xlab = "Online") 
+# 
+# barplot(data_perc2, ylab = "Percent", xlab = "CreditCard") 
+
+barplot(data_perc3, ylab = "Percent", xlab = "PersonalLoan") 
+
+```
+```{r}
+#Converting the binary into as.factor, aLl three are binary though 
+bankdf$PersonalLoan <- as.factor(bankdf$PersonalLoan)
+bankdf$Online <- as.factor(bankdf$Online)
+bankdf$CreditCard <- as.factor(bankdf$CreditCard)
+```
+
+
+
+```{r}
+#Partition dataset, Training 60% and Validation 40%
+#set.seed(123)
+train.index <- sample(row.names(bankdf), 0.6*dim(bank)[1])  
+valid.index <- setdiff(row.names(bankdf), train.index) 
+train.df <- bankdf[train.index, ]
+valid.df <- bankdf[valid.index, ]
+```
+
+##Q 2 Part a 
+```{r}
+# library(pivottabler)
+# library(dplyr)
+library(lessR)
+library(caTools)
+```
+
+
+```{r}
+library(reshape2)
+library(melt)
+library(reshape)
+library(data.table)
+
+train.mlt = melt(train.df,id=c("CreditCard","PersonalLoan"),variable= "Online")
+train.dcast = dcast(train.mlt,CreditCard+PersonalLoan~Online)
+train.dcast
+
+#For the first observation, we interpret that out of 3000 customers 1889 uses online banking but have no credit card and doesn't accept personal loan offer. 
+#In the second observaion, we interpret that 205 customers who uses online banking but do not have credit card, accepts the personal loan offer.
+#For the third observation in the table, out of 3000 customers, 822 customers uses online banking and credit card but do not accept the personal loan offer.
+#In the fourth observation, out of 3000 customers, 84 have online banking ,uses credit card service and accepts the loan offer as well.
+#Recommendation:
+#By looking at the above results we see that all the customers who are using online banking, mose of them do not uses credit card service and didn't accept the personal loan offer aswell.So the marketing campaign should be designed in such a way that it caters to the needs of the customers and attract them to accept the loan offer. If our goal is to target masses than we should consider the people who don't have credit card and personal loan. Also the eople who already have accepted the personal loan we have to see other characteristics as well to make decision rather than just these 2 predictors.But if we want to do niche target marketing then we should also consider peole who are credit card holders and the campaign should be designed in such a way that it attracts them and register the message and get high personal loan offers acceptors.
+
+```
+ 
+
+#Q 2 Part b
+
+```{r}
+(91/3000)*100
+```
+
+
+
+```{r}
+#First I tried to calculate the values manually but when I was rerunning the value changes, by using dplyr and group by function I calculated below.
+t.df<-train.df %>%
+  group_by(CreditCard,PersonalLoan)%>%
+  summarise(count = n())
+t.df
+
+loan.accp <- filter(t.df,(CreditCard==1 & PersonalLoan==1))
+prob.loan.accp<- loan.accp$count/sum(t.df$count)
+prob.loan.accp
+
+#A customer who has a bank credit card and is using online banking service , will have 0.026 probability that this customer will accept the offer. So looking at the probability it is ver low so it is not a wise decision that customers with such characteristics should be targeted in the campaign or we can also say that there is a very less probability that customers with these characteristics will be our potential customers.
+
+```
+
+##Q 2 Part c
+```{r}
+# #trainning data with loan and online banking
+# m.bk1= melt(train.mlt, id= "PersonalLoan", variable = "Online")
+# dcast.mbk1 =dcast(m.bk1,PersonalLoan~Online)
+# #trainning data with loan and credit card
+# m.bk2= melt(train.mlt,id="PersonalLoan",variable = "CreditCard")
+# dcast.mbk2 =dcast(m.bk2,PersonalLoan~CreditCard)
+# 
+# Loan.Online=dcast.mbk1[,c(1,2)]
+# Loan.CC = dcast.mbk2[,c(1,3)]
+# 
+# Loan.Online
+# Loan.CC
+
+#It was working but when I re run this it was not running and giving me error then I used dplyr and group by function to attempt c part.
+```
+
+```{r}
+#Loan and Online 
+sum(train.df$PersonalLoan == 1 & train.df$Online == 1)
+sum(train.df$PersonalLoan == 1 & train.df$Online == 0)
+
+sum(train.df$PersonalLoan == 0 & train.df$Online == 1)
+sum(train.df$PersonalLoan == 0 & train.df$Online == 0)
+
+# 173  applied for loan and use online banking = 173 / 3000
+# 114 applied for loan but don't use online banking = 114/3000
+# 1612  use online banking services but doesnt apply for loan = 1612 /3000
+# 1100 didnt use online banking services neither they applied for loan = 1100 /3000
+
+#Loan & Credit Card
+sum(train.df$PersonalLoan == 1 & train.df$CreditCard == 1)
+sum(train.df$PersonalLoan == 1 & train.df$CreditCard == 0)
+
+sum(train.df$PersonalLoan == 0 & train.df$CreditCard == 1)
+sum(train.df$PersonalLoan == 0 & train.df$CreditCard == 0)
+
+# 79  applied for loan and use credit card = 79 / 3000
+# 209 applied for loan but don't use credit card = 114/3000
+# 804  use credit card services but doesnt apply for loan = 804 /3000
+# 1908 didnt use creditcard service neither they applied for loan = 1908 /3000
+
+
+```
+
+
+```{r}
+library(dplyr)
+cc.func <-train.df %>%
+  group_by(CreditCard)%>%
+  summarise(count = n())
+cc.func
+
+
+
+pl.func <-train.df %>%
+  group_by(PersonalLoan)%>%
+  summarise(count = n())
+pl.func 
+```
+#We have created two pivot table, first table shows the count, explaining that how many customers are not credit card holders but uses online banking actively, by looking at the table we see that out of 3000 customers, 2082 customers are actively using online banking but are not credit card holder wheras only 918 customers out of 3000 are active online banking users and also are credit card holder.
+#The second table also shows the no of customers out of total who uses online banking and also accepts he personal loan offer, Looking at the first observation, out of 3000 customers, 2696 are active online banking users but they didn't accepts the personal loan offer whereas 304 customers are active online banking users and also accepts the personal loan offer.
+
+#Q 2 Part d
+```{r}
+table(train.df[,c(3,1)])
+```
+
+
+```{r}
+table(train.df[,c(2,1)])
+```
+```{r}
+table(train.df[,c(1)])
+```
+
+```{r}
+# 91/(91+187)*100
+# 179/(179+99)*100
+# 278/(278+2722)*100
+# 792/(792+1930)*100
+# 1620/(1620+1102)*100
+# 2722/(2722+278)*100
+```
+
+```{r}
+#I tried it calculate manually but it was giving me same results but the above results were changing every time I rerun so that's why I calculated using function again.
+
+a <-count(filter(train.df,(CreditCard==1 & PersonalLoan==1)))/count(filter(train.df,PersonalLoan==1))
+a*100
+#Out of 3000 customers approximately 31% customers proportion uses credit card service and accepts personal loan offer.
+
+b <-count(filter(train.df,(Online==1 & PersonalLoan==1)))/count(filter(train.df,(PersonalLoan==1)))
+b*100
+#Out of 3000 customers approximately 63% customers proportion uses online banking service and accepts personal loan offer.
+
+c<-count(filter(train.df,(PersonalLoan==1)))/count(filter(train.df))
+c*100
+#Out of 3000 customers approximately 9% of customers accepts personal loan offer.
+
+d<-count(filter(train.df,(CreditCard==1 & PersonalLoan==0)))/count(filter(train.df, PersonalLoan ==0))
+d*100
+#Out of 3000 customers approximately 90% customers proportion uses credit card  service but doesn't accepts personal loan offer.
+
+e <-count(filter(train.df,(Online==1 & PersonalLoan==0)))/count(filter(train.df, PersonalLoan ==0))
+e*100
+#Out of 3000 customers approximately 60% customers proportion uses online banking service but doesn't accepts personal loan offer.
+
+f <-count(filter(train.df,(PersonalLoan==0)))/count(filter(train.df))
+f*100
+#Out of 3000 customers approximately 90% of customers does not accepts personal loan offer.
+```
+#Q 2 Part e
+```{r}
+#Tried to do it manually by putting values but when I was rerunning the values were slightly changing so I calculated later with a function below, also it helps me recheck my answers 
+
+# ((91/(91+187))*(179/(179+99))*(278/(278+2722)))/((91/(91+187))*(179/(179+99))*(278/(278+2722)))+((792/(792+1930))*(1620/(1620+1102))*(2722/(2722+278)))
+# ((32.73381*64.38849* 9.266667)/((32.73381*64.38849* 9.266667)+(29.09625*59.51506*90.73333)))
+# 0.1105637*100
+```
+
+```{r}
+naiveBayes.prob<-(a*b*c)/((a*b*c)+(d*e*f))
+naiveBayes.prob * 100 
+
+##Explanation: 
+##By looking at the results above we interpret that:
+#A customer who uses banks credit card service and he is an active online banking service user has a probability of 0.1384 that this customer will accept the offer. So looking at the probability it is low so it is not a wise decision that customers with such characteristics should be targeted in the campaign to offer loan but when we compare with the above  results calculated the probability customer who has a bank credit card and is using online banking service , will have 0.026 probability that this customer will accept the offer but with above calculation the probability increases to 0.1038 i.e 10%, So comparing the both results we say that the naive Bayes probability has increased and we can consider it.
+```
+
+##Q 2 part f 
+##Comaring the result of a customer who is a credit card holder and is an active online banking user, the probability of accepting the loan offer is aproximately 2.5% (Eaxct Bayes) in part b wheras when we calculate using Naive Bayes above the probability of a customer to accept loan, who is a credit card holder and active user of online banking is 9.69%.The diffrence is signinficant due to absence of conditional independence in the eaxct bayes.
+#Also, Naive Bayes is not considered relatively more accurate calssifier because of this assumption (conditional independence). In most real life cases the predictors are dependent on each other which in turn hinders the performance of the classifier 
+
+##Q 2 part g
+
+```{r}
+library(e1071)
+navie.t = train.df[,c(1:3)]
+naive.v = valid.df[,c(1:3)]
+model.b <- naiveBayes(PersonalLoan~.,data=navie.t)
+model.b 
+
+#Predication on the Validation data
+pre <- predict(model.b, naive.v)
+summary(pre)
+
+
+#In the training data we have about 89.8% of data points belonging to the category where the offer acceptance of personal loan is 0, means customer will not accept the loan and 10.13% data points belonging to the category where acceptance of loan offer is 1 , means customer will accept the loan offer.
+#then we have 2 other tables in the output result so for each categorical variable in the data set like ONLINE and Credit Card we get the probabilities.
+#The conditional probability for all Online Banking users and Credit card holders created is calculated by the model separately and probabilities are calculated for them that indicate the distribution of the data.
+#Explanation of Online Banking: The probability that a person who doesn't uses online banking, given that he did not accept the personal loan offer so that probability is 0.595 similarly that the probability of a person who uses online banking, given that he did accept the personal loan offer so that the probability is 0.4797.
+#Explanation of CreditCard : The probability that a person who doesn't uses credit card service, given that he did not accept the personal loan offer so that probability is 0.6973 similarly that the probability of a person is a credit card holder, given that he did accept the personal loan offer ,the probability is 0.3355.
+
+#Comparing the results, the customers who are credit card holder, are active online banking users have the probability of accepting the personal loan offer is 0.09 whereas in the above part e and in g we get the 0.09633 probability of accepting the offer, both of them are very similar so there is no signinfant difference and we should bring other factors in consideration to choose between both or else choose any of these.
+```
+```{r}
+
+##Just checking the results:
+#Check the accuracy we will do confusion matrix 
+conf_mat <- table(valid.df$PersonalLoan,pre) 
+
+print(conf_mat) 
+
+library(caret)
+
+# Model Evauation 
+confusionMatrix(conf_mat) 
+```
+
